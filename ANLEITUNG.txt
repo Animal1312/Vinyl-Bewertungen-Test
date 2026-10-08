@@ -1,0 +1,11 @@
+VINYL BEWERTUNGEN – TESTVERSION 2
+
+1. Ein neues GitHub-Repository Vinyl-Bewertungen-Test erstellen (Public).
+2. index.html, manifest.webmanifest und sw.js aus diesem Paket hochladen.
+3. GitHub Pages: Deploy from a branch, main, /(root).
+4. Neue HTTPS-Adresse öffnen. In Verwaltung mit Supabase-E-Mail und Passwort anmelden.
+5. Unter Sicherung die JSON-Datei mit 11 Bewertungen importieren.
+6. Am PC und iPhone Anzahl kontrollieren. Erst danach Offline-Test.
+
+Die bisherige App und Sicherungsdatei NICHT löschen.
+Kein Datenbankpasswort oder Secret Key in GitHub hochladen.

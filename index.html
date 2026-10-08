@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#111111">
+<title>Vinyl Bewertungen – Testversion 2</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon.png">
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#f2f2f2;color:#171717}
+header{background:#111;color:white;padding:18px 22px;position:sticky;top:0;z-index:10}
+header h1{margin:0 0 12px;font-size:25px}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav button{border:0;border-radius:8px;padding:10px 15px;background:#333;color:#fff;cursor:pointer}
+nav button.active{background:#fff;color:#111}
+main{max-width:1200px;margin:0 auto;padding:24px}
+.page{display:none}.page.active{display:block}
+.card{background:white;border-radius:14px;padding:20px;margin-bottom:18px;box-shadow:0 2px 10px #00000012}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+label{font-weight:bold;font-size:14px;display:block}
+input,select,textarea{width:100%;margin-top:6px;border:1px solid #ccc;border-radius:8px;padding:11px;font:inherit}
+textarea{min-height:110px;resize:vertical}
+.rating-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.rating-row{display:flex;align-items:center;justify-content:space-between;border:1px solid #ddd;border-radius:10px;padding:10px 12px}
+.rating-row label{margin:0}
+.rating-buttons{display:flex;gap:4px}
+.rating-buttons button{width:34px;height:34px;border:1px solid #bbb;background:#fafafa;border-radius:7px;cursor:pointer;font-weight:bold}
+.rating-buttons button.selected{background:#111;color:#fff;border-color:#111}
+.total{font-size:22px;font-weight:bold;text-align:center;padding:15px;border-radius:10px;background:#eee;margin-top:15px}
+.primary{background:#111;color:#fff;border:0;border-radius:9px;padding:13px 18px;font-weight:bold;cursor:pointer}
+.danger{background:#b00020;color:#fff;border:0;border-radius:9px;padding:13px 18px;font-weight:bold;cursor:pointer}
+.secondary{background:#e8e8e8;color:#111;border:0;border-radius:9px;padding:11px 15px;cursor:pointer}
+.cover-box{display:flex;gap:18px;align-items:center}
+.cover{width:170px;height:170px;object-fit:cover;border-radius:10px;background:#ddd;display:block}
+.placeholder{width:170px;height:170px;border-radius:10px;background:#ddd;display:flex;align-items:center;justify-content:center;text-align:center;color:#777;padding:15px}
+.table-wrap{overflow:auto}
+table{border-collapse:collapse;width:100%;min-width:1100px;background:white}
+th,td{padding:9px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}
+th{background:#eee;position:sticky;top:0}
+.thumb{width:65px;height:65px;object-fit:cover;border-radius:6px;background:#ddd}
+.empty{text-align:center;color:#777;padding:40px}
+.category-help{font-size:13px;color:#666;margin-top:4px;line-height:1.35}
+.cover-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.cover-choice{border:1px solid #ddd;border-radius:10px;padding:10px;background:#fafafa}
+.cover-choice img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px}
+.cover-choice button{width:100%;margin-top:8px}
+.small{font-size:13px;color:#666}
+@media(max-width:700px){
+ main{padding:12px}.grid,.rating-grid{grid-template-columns:1fr}
+ .cover-box{align-items:flex-start}.cover,.placeholder{width:120px;height:120px}
+ header{padding:14px}.rating-row{display:block}.rating-buttons{margin-top:8px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎵 Vinyl Bewertungen – TEST</h1>
+  <nav>
+    <button class="active" onclick="showPage('bewertung',this)">Bewertung</button>
+    <button onclick="showPage('liste',this)">Bewertungen</button>
+    <button onclick="showPage('verwaltung',this)">Verwaltung</button>
+  </nav>
+  <div id="globalSyncStatus" style="margin-top:10px;font-size:14px;font-weight:bold;color:#ffd166">🟠 Offline – Änderungen werden automatisch synchronisiert, sobald der Server erreichbar ist.</div>
+</header>
+
+<main>
+<section id="bewertung" class="page active">
+<div class="card">
+<h2>Neue Vinyl-Bewertung</h2>
+<div class="grid">
+<label>Jahr<input id="year" type="number" min="1900" max="2100" placeholder="z. B. 1976"></label>
+<label>Band<input id="band" placeholder="Band / Künstler"></label>
+<label>Album<input id="album" placeholder="Album"></label>
+<label>Genre<input id="genre" placeholder="z. B. Rock"></label>
+<label>Release<input id="release" placeholder="z. B. LP, Reissue, Original"></label>
+</div>
+</div>
+
+<div class="card">
+<h2>Cover</h2>
+<div class="cover-box">
+<div id="coverPlaceholder" class="placeholder">Noch kein Cover ausgewählt</div>
+<img id="coverImage" class="cover" style="display:none" alt="Albumcover">
+<div>
+<p class="small">Cover auswählen oder automatisch im Internet suchen.</p>
+<input id="coverFile" type="file" accept="image/*">
+<br><br>
+<button class="secondary" onclick="searchCovers()">🔎 Cover automatisch suchen</button>
+<div id="coverSearchStatus" class="small" style="margin-top:8px"></div>
+</div>
+</div>
+<div id="coverResults" style="margin-top:18px"></div>
+</div>
+
+<div class="card">
+<h2>Bewertung – 1 bis 6</h2>
+<p class="small">1 = schlecht · 6 = überragend</p>
+<div id="ratingGrid" class="rating-grid"></div>
+<div class="total">Gesamt: <span id="total">0</span> / 42</div>
+</div>
+
+<div class="card">
+<label>Beschreibung / persönliche Eindrücke
+<textarea id="description" placeholder="Was gefällt dir? Wie klingt die Platte? Besonderheiten..."></textarea>
+</label>
+<br>
+<button class="primary" onclick="saveRating()">Bewertung speichern & nächste</button>
+<button class="secondary" onclick="clearForm()">Eingabe leeren</button>
+</div>
+</section>
+
+<section id="liste" class="page">
+<div class="card">
+<h2>Bewertungen</h2>
+<p class="small">Automatisch nach Gesamtpunktzahl absteigend sortiert.</p>
+<div id="tableContainer"></div>
+</div>
+</section>
+
+<section id="verwaltung" class="page">
+<div class="card"><h2>Cloud-Synchronisation</h2>
+<p>Mit deinem persönlichen Supabase-Konto anmelden. Ohne Internet werden Bewertungen auf diesem Gerät gespeichert und später synchronisiert.</p>
+<div id="loginBox"><div class="grid"><label>E-Mail<input id="loginEmail" type="email" autocomplete="username" placeholder="Deine E-Mail"></label><label>Passwort<input id="loginPassword" type="password" autocomplete="current-password" placeholder="Dein Passwort"></label></div><button class="primary" style="margin-top:12px" onclick="login()">Anmelden</button></div>
+<p id="authState"></p><button id="logoutBtn" class="secondary" onclick="logout()">Abmelden</button>
+<button class="secondary" onclick="syncNow()">↕ Jetzt synchronisieren</button>
+<div id="syncStatus" class="card" style="background:#f5f5f5;margin:12px 0;padding:14px"><strong>Status:</strong> <span id="syncStatusText">Wird geprüft …</span></div>
+</div>
+<div class="card">
+<h2>Sicherung</h2>
+<p class="small">Optional kannst du deine Bewertungen als Datei sichern oder wiederherstellen.</p>
+<button class="secondary" onclick="exportBackup()">⬇ Bewertungen sichern</button>
+<label style="display:inline-block;margin-left:8px">⬆ Sicherung importieren
+<input type="file" accept=".json,application/json" onchange="importBackup(this)">
+</label>
+</div>
+<div class="card"><h2>Datenschutz</h2><p>Die Funktion „Alle Bewertungen löschen“ ist in dieser Testversion aus Sicherheitsgründen deaktiviert.</p></div>
+</section>
+</main>
+
+<script>
+const categories = [
+ {name:"Stimmung",desc:"Düster, aggressiv, bedrohlich, melancholisch oder mitreißend – wie stark erzeugt die Musik eine eigene Atmosphäre?"},
+ {name:"Gesang",desc:"Stimme, Ausdruck, Tonlage und Emotion – passt der Gesang zur Musik und trägt er die Songs?"},
+ {name:"Gitarrenspiel",desc:"Spieltechnik, Riffs, Soli und Ideen – passend und wirkungsvoll oder unnötiges Gefrickel ohne Mehrwert?"},
+ {name:"Feeling",desc:"Wie sehr entsteht ein echtes Gefühl und eine besondere Energie beim Hören – Groove, Spannung und Emotion?"},
+ {name:"Songqualität",desc:"Wie stark sind die einzelnen Songs als Komposition – Melodie, Aufbau, Refrain, Dynamik und musikalische Idee?"},
+ {name:"Wiederspielwert",desc:"Wie groß ist der Wunsch, die Platte erneut aufzulegen – entdeckt man bei jedem Hören etwas Neues?"},
+ {name:"Cover",desc:"Gestaltung, Motiv, Farbgebung und Wirkung – passt das Cover zur Musik und macht es die Platte als Vinyl attraktiv?"}
+];
+let ratings = {};
+let coverData = "";
+
+function showPage(id, btn){
+ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ if(id==="liste") renderTable();
+}
+
+
+const SUPABASE_URL = "https://ozrarpbrrmoqngbzbvgf.supabase.co";
+const SUPABASE_KEY = "sb_publishable_9frEfDqtY3By-Tgb6h22rw_k2DRRYux";
+const DATA_KEY = "vinylRatings_v2";
+const AUTH_KEY = "vinylAuth_v2";
+let syncBusy=false, syncTimer=null;
+function getLocalItems(){try{return JSON.parse(localStorage.getItem(DATA_KEY)||"[]")}catch{return []}}
+function saveLocal(items){localStorage.setItem(DATA_KEY,JSON.stringify(items));renderTable();}
+function setSyncStatus(message,state){
+ const el=document.getElementById("syncStatusText");if(el)el.textContent=message;
+ const g=document.getElementById("globalSyncStatus");if(g){g.textContent=(state==='ok'?'🟢 ':state==='syncing'?'🔵 ':'🟠 ')+message;g.style.color=state==='ok'?'#7CFC98':state==='syncing'?'#8ecae6':'#ffd166';}
+}
+function auth(){try{return JSON.parse(localStorage.getItem(AUTH_KEY)||'null')}catch{return null}}
+function saveAuth(a){if(a)localStorage.setItem(AUTH_KEY,JSON.stringify(a));else localStorage.removeItem(AUTH_KEY);updateAuthUI();}
+function updateAuthUI(){const a=auth();document.getElementById('authState').textContent=a?'Angemeldet – automatische Synchronisation aktiviert.':'Nicht angemeldet – Bewertungen bleiben auf diesem Gerät.';document.getElementById('loginBox').style.display=a?'none':'block';document.getElementById('logoutBtn').style.display=a?'inline-block':'none';}
+async function authRequest(path,body){const r=await fetch(SUPABASE_URL+'/auth/v1/'+path,{method:'POST',headers:{apikey:SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(d.msg||d.error_description||d.message||'Anmeldung fehlgeschlagen');return d;}
+async function login(){const email=document.getElementById('loginEmail').value.trim(),password=document.getElementById('loginPassword').value;if(!email||!password)return alert('E-Mail und Passwort eingeben.');try{const d=await authRequest('token?grant_type=password',{email,password});saveAuth(d);document.getElementById('loginPassword').value='';await syncNow();}catch(e){alert(e.message)}}
+function logout(){if(!confirm('Abmelden? Die lokalen Bewertungen bleiben auf diesem Gerät.'))return;saveAuth(null);setSyncStatus('Abgemeldet – lokale Speicherung aktiv.','offline');}
+async function accessToken(){let a=auth();if(!a)return null;if(Date.now()<((a.expires_at||0)*1000)-60000)return a.access_token;const d=await authRequest('token?grant_type=refresh_token',{refresh_token:a.refresh_token});saveAuth(d);return d.access_token;}
+async function dbRequest(path,options={}){const token=await accessToken();if(!token)throw Error('Bitte anmelden');const r=await fetch(SUPABASE_URL+'/rest/v1/'+path,{...options,headers:{apikey:SUPABASE_KEY,Authorization:'Bearer '+token,...(options.headers||{})}});if(!r.ok)throw Error('Datenbank: '+r.status+' '+(await r.text()).slice(0,180));return r.status===204?null:r.json();}
+function mergeItems(local,server){const m=new Map();for(const i of server)m.set(String(i.id),i);for(const i of local){const old=m.get(String(i.id));if(!old||Number(i.modifiedAt||0)>=Number(old.modifiedAt||0))m.set(String(i.id),i);}return [...m.values()];}
+async function syncNow(){if(syncBusy)return;if(!navigator.onLine){setSyncStatus('Offline – lokal gespeichert; Abgleich bei Internetverbindung.','offline');return;}if(!auth()){setSyncStatus('Lokal gespeichert – zur Synchronisation bitte anmelden.','offline');return;}
+ syncBusy=true;setSyncStatus('Synchronisiere …','syncing');try{
+ const a=auth();const rows=await dbRequest('vinyl_bewertungen?select=id,daten');
+ const merged=mergeItems(getLocalItems(),rows.map(x=>x.daten));
+ // Zuerst lokal sichern, danach fehlende oder geänderte Datensätze übertragen.
+ saveLocal(merged);
+ const remote=new Map(rows.map(x=>[String(x.id),JSON.stringify(x.daten)]));
+ const changed=merged.filter(i=>remote.get(String(i.id))!==JSON.stringify(i));
+ if(changed.length)await dbRequest('vinyl_bewertungen?on_conflict=id',{method:'POST',headers:{'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(changed.map(i=>({id:i.id,user_id:a.user.id,daten:i,aktualisiert_am:new Date().toISOString()})))});
+ setSyncStatus('Synchronisiert – '+merged.length+' Bewertungen.','ok');
+ }catch(e){console.error(e);setSyncStatus('Synchronisation ausstehend – lokale Daten bleiben erhalten.','offline');}finally{syncBusy=false;}}
+function exportBackup(){const b=new Blob([JSON.stringify(getLocalItems(),null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='vinyl-bewertungen-v2-sicherung.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function importBackup(input){const f=input.files?.[0];if(!f)return;const reader=new FileReader();reader.onload=()=>{try{const items=JSON.parse(reader.result);if(!Array.isArray(items)||items.some(i=>!i.id||!i.band||!i.album))throw Error('Ungültige Sicherungsdatei');const merged=mergeItems(getLocalItems(),items);if(!confirm(items.length+' Bewertungen gefunden. '+merged.length+' Bewertungen werden insgesamt lokal gespeichert. Fortfahren?'))return;saveLocal(merged);setSyncStatus(merged.length+' Bewertungen importiert – Synchronisation startet.','syncing');syncNow();}catch(e){alert('Import fehlgeschlagen: '+e.message)}finally{input.value=''}};reader.readAsText(f);}
+function startSyncPolling(){updateAuthUI();syncNow();if(!syncTimer)syncTimer=setInterval(syncNow,30000);}
+window.addEventListener('online',syncNow);window.addEventListener('focus',syncNow);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNow()});
+function buildRatings(){
+ const grid=document.getElementById("ratingGrid");
+ grid.innerHTML="";
+ categories.forEach(cat=>{
+   ratings[cat.name]=0;
+   const row=document.createElement("div");
+   row.className="rating-row";
+   row.innerHTML=`<div><label>${cat.name}</label><div class="small">${cat.desc}</div></div><div class="rating-buttons"></div>`;
+   const buttons=row.querySelector(".rating-buttons");
+   for(let n=1;n<=6;n++){
+     const b=document.createElement("button");
+     b.textContent=n;
+     b.title=`${n} von 6`;
+     b.onclick=()=>setRating(cat.name,n,row);
+     buttons.appendChild(b);
+   }
+   grid.appendChild(row);
+ });
+}
+function setRating(cat,n,row){
+ ratings[cat]=n;
+ row.querySelectorAll("button").forEach((b,i)=>b.classList.toggle("selected",i+1===n));
+ updateTotal();
+}
+function updateTotal(){
+ document.getElementById("total").textContent=Object.values(ratings).reduce((a,b)=>a+b,0);
+}
+function clearForm(){
+ ["year","band","album","genre","release","description"].forEach(id=>document.getElementById(id).value="");
+ ratings={}; buildRatings(); updateTotal();
+ coverData=""; document.getElementById("coverFile").value="";
+ document.getElementById("coverImage").style.display="none";
+ document.getElementById("coverPlaceholder").style.display="flex";
+}
+document.getElementById("coverFile").addEventListener("change",e=>{
+ const file=e.target.files[0]; if(!file)return;
+ const reader=new FileReader();
+ reader.onload=()=>{coverData=reader.result; document.getElementById("coverImage").src=coverData;
+ document.getElementById("coverImage").style.display="block";document.getElementById("coverPlaceholder").style.display="none";};
+ reader.readAsDataURL(file);
+});
+function saveRating(){
+ const band=document.getElementById("band").value.trim();
+ const album=document.getElementById("album").value.trim();
+ if(!band||!album){alert("Bitte mindestens Band und Album eingeben.");return;}
+ if(Object.values(ratings).some(v=>!v)){alert("Bitte alle 7 Bewertungskategorien bewerten.");return;}
+ const item={
+  id:Date.now(),year:document.getElementById("year").value,band,album,
+  genre:document.getElementById("genre").value,release:document.getElementById("release").value,
+  ratings:{...ratings},description:document.getElementById("description").value,
+  total:Object.values(ratings).reduce((a,b)=>a+b,0),cover:coverData,modifiedAt:Date.now()
+ };
+ const all=getLocalItems();
+ all.push(item); saveLocal(all);
+ alert("Bewertung gespeichert.");
+ clearForm();
+ syncNow();
+}
+function getRatingValue(item, categoryName){
+ const r=item?.ratings||{};
+ if(r[categoryName] !== undefined && r[categoryName] !== null && r[categoryName] !== "") return r[categoryName];
+ const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]/g,"");
+ const wanted=norm(categoryName);
+ const key=Object.keys(r).find(k=>norm(k)===wanted);
+ if(key !== undefined) return r[key];
+ if(categoryName==="Songqualität"){
+   const alias=Object.keys(r).find(k=>["songqualitat","songquality","songqualitaet"].includes(norm(k)));
+   if(alias !== undefined) return r[alias];
+ }
+ return 0;
+}
+
+function renderTable(){
+ const all=getLocalItems().sort((a,b)=>b.total-a.total);
+ const box=document.getElementById("tableContainer");
+ if(!all.length){box.innerHTML='<div class="empty">Noch keine Bewertungen gespeichert.</div>';return;}
+ let html=`<div class="table-wrap"><table><thead><tr>
+ <th>Platz</th><th>Cover</th><th>Jahr</th><th>Band</th><th>Album</th><th>Genre</th><th>Release</th>
+ ${categories.map(c=>`<th>${c.name}</th>`).join("")}<th>Gesamt</th><th>Beschreibung</th>
+ </tr></thead><tbody>`;
+ all.forEach((x,index)=>{
+ html+=`<tr><td><strong>${index+1}</strong></td><td>${x.cover?`<img class="thumb" src="${x.cover}">`:"—"}</td>
+ <td>${escapeHtml(x.year)}</td><td>${escapeHtml(x.band)}</td><td>${escapeHtml(x.album)}</td>
+ <td>${escapeHtml(x.genre)}</td><td>${escapeHtml(x.release)}</td>
+ ${categories.map(c=>`<td>${getRatingValue(x,c.name)}</td>`).join("")}
+ <td><strong>${x.total} / 42</strong></td><td>${escapeHtml(x.description)}</td></tr>`;
+ });
+ html+="</tbody></table></div>";
+ box.innerHTML=html;
+}
+
+async function searchCovers(){
+ const artist=document.getElementById("band").value.trim();
+ const title=document.getElementById("album").value.trim();
+ const status=document.getElementById("coverSearchStatus");
+ const results=document.getElementById("coverResults");
+ if(!artist||!title){alert("Bitte zuerst Band und Album eingeben.");return;}
+ status.textContent="Suche passende Releases und Cover...";
+ results.innerHTML="";
+ try{
+   const q=`artist:"${artist}" AND release:"${title}"`;
+   const url=`https://musicbrainz.org/ws/2/release?query=${encodeURIComponent(q)}&fmt=json&limit=10`;
+   const response=await fetch(url,{headers:{"Accept":"application/json"}});
+   if(!response.ok) throw new Error("MusicBrainz nicht erreichbar");
+   const data=await response.json();
+   const releases=(data.releases||[]).filter(r=>r.id);
+   const choices=[];
+   for(const r of releases.slice(0,8)){
+     try{
+       const ar=await fetch(`https://coverartarchive.org/release/${r.id}`,{headers:{"Accept":"application/json"}});
+       if(!ar.ok) continue;
+       const art=await ar.json();
+       const img=(art.images||[]).find(x=>x.front)|| (art.images||[])[0];
+       if(img){
+         choices.push({
+           title:r.title, date:r.date||r["release-group"]?.["first-release-date"]||"",
+           country:r.country||"", label:(r["label-info"]||[])[0]?.label?.name||"",
+           image:img.thumbnails?.["250"]||img.image
+         });
+       }
+     }catch(e){}
+   }
+   if(!choices.length){
+     status.textContent="Kein passendes Cover gefunden.";
+     return;
+   }
+   status.textContent=`${choices.length} passende Cover gefunden – bitte auswählen:`;
+   results.innerHTML=`<div class="cover-results">${choices.map((c,i)=>`
+     <div class="cover-choice">
+       <img src="${c.image}" alt="Cover">
+       <div class="small"><strong>${escapeHtml(c.title)}</strong><br>
+       ${escapeHtml(c.date)} ${c.country?`· ${escapeHtml(c.country)}`:""}<br>
+       ${escapeHtml(c.label)}</div>
+       <button class="primary" onclick="selectCover(${i})">Dieses Cover wählen</button>
+     </div>`).join("")}</div>`;
+   window.coverChoices=choices;
+ }catch(err){
+   console.error(err);
+   status.textContent="Die Cover-Suche konnte gerade nicht ausgeführt werden.";
+ }
+}
+function selectCover(i){
+ const c=window.coverChoices?.[i]; if(!c)return;
+ coverData=c.image;
+ document.getElementById("coverImage").src=c.image;
+ document.getElementById("coverImage").style.display="block";
+ document.getElementById("coverPlaceholder").style.display="none";
+ document.getElementById("coverResults").innerHTML="";
+ document.getElementById("coverSearchStatus").textContent="Cover ausgewählt.";
+}
+function escapeHtml(s){
+ return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+function deleteAllDisabled(){
+ if(confirm("Wirklich ALLE Bewertungen löschen? Dieser Vorgang kann nicht rückgängig gemacht werden.")){
+  localStorage.removeItem("vinylRatings");
+  localStorage.setItem(SYNC_KEY,String(Date.now()));
+  renderTable();
+  if(apiAvailable()){
+   syncNow();
+  }
+  alert("Alle Bewertungen wurden gelöscht.");
+ }
+}
+
+buildRatings(); updateTotal(); startSyncPolling();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.warn));
+</script>
+</body>
+</html>
